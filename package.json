@@ -1,0 +1,56 @@
+{
+  "name": "@nodus-development/secretaria-connect",
+  "version": "0.1.0",
+  "description": "SDK de SecretarIA Connect: empuja items de tu sistema a las tareas de un usuario y verifica los webhooks que vuelven.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Nodus Development",
+  "homepage": "https://github.com/Nodus-Development/secretaria-connect#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nodus-Development/secretaria-connect.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Nodus-Development/secretaria-connect/issues"
+  },
+  "keywords": [
+    "secretaria",
+    "secretar-ia",
+    "connect",
+    "oauth2",
+    "webhooks",
+    "tasks",
+    "sdk"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.2",
+    "vitest": "^4.1.1"
+  }
+}

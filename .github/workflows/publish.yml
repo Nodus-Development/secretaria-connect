@@ -1,0 +1,31 @@
+name: Publicar en npm
+
+# Se publica al empujar el tag de versión, nunca desde una rama:
+#   npm version <x.y.z> && git push --follow-tags
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      # `id-token: write` es lo que hace posible `--provenance`: npm firma que
+      # este tarball salió de ESTE repo y de ESTE workflow.
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm publish --provenance --access public
+        env:
+          # Granular Access Token con permiso de escritura SOLO sobre este
+          # paquete. Se rota a mano; no hay OIDC de npm todavía.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

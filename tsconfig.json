@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    // `DOM` y no `@types/node`: el paquete solo usa globales de plataforma
+    // (`fetch`, `crypto.subtle`, `TextEncoder`), que existen igual en Node 18+,
+    // en el runtime V8 de Convex y en un worker. Traer los tipos de Node
+    // invitaría a escribir `node:crypto`, que es justo lo que el 12 prohibe.
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "rootDir": "."
+  },
+  "include": ["src", "test"]
+}
