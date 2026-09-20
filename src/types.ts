@@ -58,7 +58,9 @@ export interface ConnectItem {
   /**
    * NOMBRE del proyecto destino, no id. Se crea si no existe, y se resuelve
    * solo entre los proyectos PROPIOS del usuario.
-   * Si lo omites cae en el proyecto que el usuario eligio al conectar.
+   * Al CREAR, si lo omites cae en el proyecto que el usuario eligio al
+   * conectar. Al REFRESCAR, omitirlo significa "no opino": la tarea NO se
+   * mueve al destino por defecto.
    * Exige el scope `connect:projects`; sin él, el campo se ignora y el ítem
    * cae en el destino por defecto (sale en `skippedFields`).
    */

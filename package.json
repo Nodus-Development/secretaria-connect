@@ -1,6 +1,6 @@
 {
   "name": "@nodus-development/secretaria-connect",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "SDK de SecretarIA Connect: empuja items de tu sistema a las tareas de un usuario y verifica los webhooks que vuelven.",
   "type": "module",
   "license": "MIT",

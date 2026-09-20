@@ -10,6 +10,17 @@ El `1.0` tiene disparador y no fecha: sale cuando conecte el primer integrador
 que no seamos nosotros. A partir de ahí, cualquier `1.x` habla con cualquier
 `/api/connect` desplegado.
 
+## 0.1.1
+
+Solo documentación: el código publicado es idéntico al de `0.1.0`.
+
+- Guía del integrador completa en [`docs/`](./docs): alta, OAuth2, contrato de
+  sembrado, webhooks, operación y **el deber de proyectar**.
+- README con índice a la guía, el ejemplo de webhook con `express.raw` y la
+  cabecera nombrada canónicamente (`SecretarIA-Signature`, no en minúsculas).
+- Corregido el JSDoc de `ConnectItem.project`: omitirlo al **refrescar** no
+  mueve la tarea al proyecto por defecto, sólo al **crear**.
+
 ## 0.1.0
 
 Primera versión publicada.
