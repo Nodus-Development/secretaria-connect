@@ -87,8 +87,12 @@ async function main() {
         ? 'no se ha podido consultar npm (¿sin red?)'
         : `${version} YA está publicada: una versión no se reutiliza, sube el número`,
     ],
-    [!tagRemoto, `tag ${tag} libre en origin`, `el tag ${tag} ya existe en origin`],
   ];
+
+  // Un tag ocupado con la versión SIN publicar no es un problema, es el rastro
+  // de un intento que falló. Mover el tag es la única forma de que el workflow
+  // vuelva a arrancar sobre el arreglo.
+  const reintento = tagRemoto && yaPublicada === false;
 
   console.log(`${NEGRITA}Estado${FIN}`);
   let bloqueado = false;
@@ -105,7 +109,12 @@ async function main() {
       ? `  ${VERDE}✓${FIN} npm: sesión de ${quien}`
       : `  ${AMBAR}·${FIN} npm: sin sesión ${GRIS}(sólo hace falta para publicar a mano)${FIN}`,
   );
-  if (tagLocal && !tagRemoto) {
+  if (reintento) {
+    console.log(
+      `  ${AMBAR}·${FIN} el tag ${tag} ya existe y ${version} no está publicada:` +
+        ` el intento anterior falló ${GRIS}(se moverá el tag)${FIN}`,
+    );
+  } else if (tagLocal) {
     console.log(`  ${AMBAR}·${FIN} el tag ${tag} existe en local y no en origin`);
   }
 
@@ -147,13 +156,27 @@ async function main() {
         `${GRIS}Requiere el publicador dado de alta en npmjs.com → el paquete → Settings →` +
           ` Trusted Publisher (Nodus-Development / secretaria-connect / publish.yml).${FIN}`,
       );
+      if (reintento) {
+        console.log(
+          `${AMBAR}El tag ${tag} se va a MOVER a este commit${FIN}` +
+            ` ${GRIS}(se borra de origin y se recrea; nadie depende de él porque` +
+            ` la versión nunca llegó a publicarse)${FIN}.`,
+        );
+      }
       console.log(`${AMBAR}Publicar es irreversible: esa versión no se podrá reutilizar.${FIN}`);
       const confirma = await rl.question(`\nEscribe ${NEGRITA}${tag}${FIN} para continuar: `);
       if (confirma.trim() !== tag) {
         console.log('\nNada hecho.');
         return;
       }
-      if (!tagLocal) correr('git', ['tag', '-a', tag, '-m', `${nombre} ${version}`]);
+      if (reintento) {
+        // Borrar en origin ANTES de recrear: empujar el mismo nombre sobre otro
+        // commit se rechaza, y un `--force` dejaría al CI sin disparo porque
+        // GitHub no lanza el workflow si el tag no cambia de verdad.
+        intentar('git', ['push', 'origin', `:refs/tags/${tag}`]);
+        intentar('git', ['tag', '-d', tag]);
+      }
+      if (!tagLocal || reintento) correr('git', ['tag', '-a', tag, '-m', `${nombre} ${version}`]);
       correr('git', ['push', 'origin', tag]);
       console.log(
         `\n${VERDE}Tag empujado.${FIN} Sigue la ejecución con:\n  gh run watch -R Nodus-Development/secretaria-connect`,

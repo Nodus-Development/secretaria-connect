@@ -15,11 +15,17 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      # SIN `registry-url`, y es la línea que hacía fallar el `0.2.0` con un
+      # `E404` que mentía. Con ella, setup-node escribe un `.npmrc` con
+      # `_authToken=${NODE_AUTH_TOKEN}` y se inventa el relleno
+      # `XXXXX-XXXXX-XXXXX-XXXXX`; npm ve que ya tiene credencial, NO arranca
+      # el intercambio OIDC y publica con basura, que el registro rechaza como
+      # «no encontrado». Sin ella, npm cae al registro por defecto —el mismo—,
+      # no encuentra credencial y entonces sí hace el Trusted Publishing.
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
       # El Trusted Publishing pide npm >= 11.5.1, y lo que traiga Node por
       # defecto cambia con cada parche. Actualizarlo es más barato que
       # depurar un 401 que no dice que el problema es la versión del cliente.
