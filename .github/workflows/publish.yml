@@ -1,7 +1,7 @@
 name: Publicar en npm
 
 # Se publica al empujar el tag de versión, nunca desde una rama:
-#   npm version <x.y.z> && git push --follow-tags
+#   npm start  →  opción 2
 on:
   push:
     tags: ['v*']
@@ -10,8 +10,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      # `id-token: write` es lo que hace posible `--provenance`: npm firma que
-      # este tarball salió de ESTE repo y de ESTE workflow.
+      # Lo que hace posible el Trusted Publishing: GitHub emite un OIDC de
+      # corta vida que npm verifica contra la configuración del paquete.
       id-token: write
       contents: read
     steps:
@@ -20,12 +20,23 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+      # El Trusted Publishing pide npm >= 11.5.1, y lo que traiga Node por
+      # defecto cambia con cada parche. Actualizarlo es más barato que
+      # depurar un 401 que no dice que el problema es la versión del cliente.
+      - run: npm install -g npm@latest
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - run: npm publish --provenance --access public
-        env:
-          # Granular Access Token con permiso de escritura SOLO sobre este
-          # paquete. Se rota a mano; no hay OIDC de npm todavía.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # SIN token y SIN `--provenance`, y ninguna de las dos cosas es un
+      # olvido. El `0.1.0` se intentó publicar con un Granular Access Token y
+      # npm lo rechazó con `E403`: exige 2FA o un token con bypass. Ese bypass
+      # existe pero está en retirada —pierde la publicación directa a
+      # principios de 2027—, así que en vez de arreglarlo se cambia de camino:
+      # con Trusted Publishing no hay secreto que robar ni que rotar, y la
+      # procedencia se firma sola por ser repo público.
+      #
+      # Requiere tener dado de alta el publicador en npmjs.com → el paquete →
+      # Settings → Trusted Publisher: organización `Nodus-Development`,
+      # repositorio `secretaria-connect`, workflow `publish.yml`.
+      - run: npm publish --access public
