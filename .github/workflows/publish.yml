@@ -5,6 +5,10 @@ name: Publicar en npm
 on:
   push:
     tags: ['v*']
+  # Para poder reintentar sin mover el tag mientras se depura el alta del
+  # publicador. Publicar dos veces la misma versión no es un riesgo: npm la
+  # rechaza por duplicada.
+  workflow_dispatch:
 
 jobs:
   publish:
@@ -34,6 +38,30 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # Diagnóstico del Trusted Publishing, que falla mudo y con errores que
+      # mienten. NO se imprime ningún valor, sólo si existe: los logs de este
+      # repo son públicos y el token de identidad de GitHub no va enmascarado.
+      - name: Comprobar las condiciones del OIDC
+        run: |
+          echo "node        $(node -v)"
+          echo "npm         $(npm -v)   (el Trusted Publishing pide >= 11.5.1)"
+
+          if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ]; then
+            echo "id-token    presente"
+          else
+            echo "id-token    AUSENTE  (falta permissions: id-token: write)"
+          fi
+
+          token=$(npm config get //registry.npmjs.org/:_authToken 2>/dev/null || true)
+          if [ -z "$token" ] || [ "$token" = "undefined" ] || [ "$token" = "null" ]; then
+            echo "_authToken  ausente  (bien: deja paso al OIDC)"
+          else
+            echo "_authToken  PRESENTE (mal: npm se autentica con él y se salta el OIDC)"
+          fi
+          echo
+          echo "Si las tres primeras están bien y sigue fallando, lo que falta"
+          echo "es el alta en npmjs.com -> el paquete -> Settings -> Trusted"
+          echo "Publisher: Nodus-Development / secretaria-connect / publish.yml"
       # SIN token y SIN `--provenance`, y ninguna de las dos cosas es un
       # olvido. El `0.1.0` se intentó publicar con un Granular Access Token y
       # npm lo rechazó con `E403`: exige 2FA o un token con bypass. Ese bypass
