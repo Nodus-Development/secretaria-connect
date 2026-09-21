@@ -3,6 +3,8 @@ import { normalizeBaseUrl, readResponse, requestTokens } from './internal.js';
 import type {
   ConnectItem,
   ConnectionInfo,
+  LinkSession,
+  LinkSessionOptions,
   StoredTokens,
   SyncItemError,
   SyncResult,
@@ -63,10 +65,24 @@ export interface ConnectClient {
   unlink(externalId: string): Promise<void>;
 
   /**
-   * `GET /api/connect/me` — scopes efectivos y proyecto destino.
-   * Llámala al arrancar: es lo que hace legibles los 409 de después.
+   * `GET /api/connect/me` — scopes efectivos y estado de tus entidades.
+   * Llámala al arrancar: es lo que te dice qué te falta por vincular.
    */
   me(): Promise<ConnectionInfo>;
+
+  /**
+   * `POST /api/connect/link-session` — el billete para que el usuario vincule
+   * una de tus entidades con uno de sus proyectos.
+   *
+   * Devuelve una URL de SecretarIA a la que hay que **redirigir al usuario**
+   * desde su navegador. Es de UN SOLO USO y caduca en 15 minutos, así que no la
+   * guardes ni la pidas «por si acaso»: pídela cuando el usuario pulse el botón.
+   *
+   * El proyecto lo elige él, con su sesión y en nuestro dominio; tú nunca ves
+   * cuál es. Al terminar vuelve a tu `returnUrl`, que tiene que compartir
+   * origen con alguno de tus `redirect_uris` registrados.
+   */
+  createLinkSession(options: LinkSessionOptions): Promise<LinkSession>;
 
   /**
    * `DELETE /api/connect/me` — la app se autodesconecta.
@@ -133,6 +149,9 @@ export function createConnectClient(opts: ConnectClientOptions): ConnectClient {
     },
     me() {
       return request<ConnectionInfo>('GET', '/api/connect/me');
+    },
+    createLinkSession(options) {
+      return request<LinkSession>('POST', '/api/connect/link-session', options);
     },
     disconnect() {
       return request<void>('DELETE', '/api/connect/me');

@@ -40,7 +40,7 @@ ticket empujado a dos usuarios son dos enlaces que no se ven.
 | `priority`       | `'high' \| 'medium' \| 'low'`   | Al crear, sin él: `medium`                                             |
 | `deadline`       | `number` ms \| `null`           | `null` **borra** la fecha. Omitir es «no opino»                        |
 | `deadlineType`   | `'exact' \| 'date'`             | Con `deadline`, por defecto `date`. Ver abajo                          |
-| `project`        | `string`                        | **Nombre**, no id. Exige `connect:projects` (§3)                       |
+| `target`         | `string`                        | Id **opaco** de tu entidad, no un nombre. `[A-Za-z0-9._:-]`, máx. 100 (§3) |
 | `externalStatus` | `string` (≤ 100)                | Tu vocabulario, tal cual, para que el usuario lo lea                   |
 | `externalKey`    | `string` (≤ 100)                | Tu identificador visible: `TCK-42`                                     |
 | `externalUrl`    | `string` (≤ 2000)               | El enlace de vuelta a tu sistema                                       |
@@ -50,7 +50,7 @@ El cuerpo entero no puede pasar de **64 KB**. Un campo que no conocemos se recha
 
 `title` y `notes` **no tienen tope propio**: se guardan tal cual y el único límite es el del
 cuerpo. Los demás campos de texto sí lo tienen, y pasarse es `invalid_field`, no un recorte
-silencioso — salvo `project`, que es el caso raro (§3).
+silencioso.
 
 `deadlineType` dice cómo se lee la fecha: **`date`** es de día entero (vence cuando acaba ese
 día) y **`exact`** lleva hora (vence en ese instante). Si mandas `deadline` sin `deadlineType`,
@@ -90,7 +90,7 @@ campo ya no se sincroniza» sin acumular memoria propia.
 | El campo saltado…                        | Causa                                        |
 | ---------------------------------------- | --------------------------------------------- |
 | está también en `adoptedFields`          | el usuario lo tocó y ya es suyo (§2)         |
-| es `'project'` y no está en `adoptedFields` | te falta el scope `connect:projects` (§3)  |
+| es `'project'` y no está en `adoptedFields` | esa entidad no está vinculada todavía (§3) |
 | es `'done'`                              | tu `doneAt` era más viejo que el último cambio |
 
 Léelo. Una integración que no mira `skippedFields` cree que su título entró y miente en
@@ -107,30 +107,36 @@ en `skippedFields` de esa llamada y en `adoptedFields` de todas.
 No es un fallo tuyo y no hay forma de revertirlo desde fuera: es el contrato. El usuario
 mandó.
 
-## 3 · El proyecto destino
+## 3 · El proyecto destino lo elige el usuario
 
-Al **crear**, la tarea siempre aterriza en algún sitio: el proyecto que nombre `project`, o el
-que el usuario eligió como destino al conectar. Al **refrescar**, omitir `project` significa
-«no opino», no «llévatela al destino por defecto».
+**Tú no eliges el proyecto y no puedes crear ninguno.** Lo que mandas es a qué **entidad tuya**
+pertenece el ítem, y el usuario decide, una entidad cada vez, a qué proyecto suyo va:
 
-- El nombre se resuelve **sólo entre los proyectos propios del usuario** —nunca entre los que
-  otros comparten con él—, y si no existe, se crea.
-- La comparación **no distingue mayúsculas**: «Soporte» y «soporte» son el mismo proyecto. El
-  que se crea conserva las mayúsculas que mandaste la primera vez.
-- Se normaliza: espacios recortados, sin caracteres de control, y **se acorta a 100
-  caracteres** sin avisar. Es el único campo que se trunca en vez de rechazarse, así que si tus
-  nombres pueden ser largos, córtalos tú para saber cómo van a quedar.
-- Un proyecto propio archivado que nombras explícitamente se usa igual.
-- Si tu app varía el nombre en cada push, creas un proyecto por ítem y dejas la barra lateral
-  del usuario inservible. No hay tope que te frene. Pórtate bien.
+```ts
+await client.sync({ externalId: 'TCK-42', title: '…', done: false, target: 'org_7f3a' });
+```
 
-**Sin el scope `connect:projects`**, tu `project` se ignora, el ítem cae en el destino por
-defecto y `project` aparece en `skippedFields`. No es un `403`: es una degradación deliberada,
-porque el usuario tenía derecho a desmarcar esa casilla sin romperte.
+- `target` es un id **opaco tuyo**: `[A-Za-z0-9._:-]`, máximo 100. No es un nombre para leer, y
+  el servidor lo rechaza con `422` si lo parece («Soporte Nodus» tiene un espacio).
+- Si esa entidad está **vinculada**, la tarea nace en el proyecto que el usuario eligió.
+- Si **no** lo está —o si omites el campo—, la tarea nace **sin proyecto** y SecretarIA le
+  pregunta al usuario a dónde va. No es un error: la respuesta es `200` y `project` sale en
+  `skippedFields`. **Ésa es tu señal** para pedir una vinculación ([`vincular.md`](./vincular.md)).
+- Al **refrescar**, omitir `target` significa «no opino»: la tarea no se mueve.
+- Si el usuario ya movió esa tarea a mano, el campo queda adoptado y tú dejas de re-enrutarla
+  para siempre (§2). Vincular después arrastra las que él no haya tocado, y sólo ésas.
+- Si vincula una entidad a un proyecto que luego archiva, sus tareas vuelven a caer sin
+  proyecto. Tampoco es un error: degradar, no bloquear.
 
-Si el usuario archivó o borró su proyecto destino, los ítems que **no** traen `project`
-responden `409 default_project_unavailable`. Los que sí lo traen entran igual: degradar, no
-bloquear.
+**Mandas `target` y lees `project`.** La asimetría es deliberada: `project` es el nombre del
+campo de la **tarea** que se ha visto afectado, y es el que aparece en `appliedFields`,
+`skippedFields` y `adoptedFields`.
+
+> **Viniendo de `0.1.x`**: existía un campo `project` con el **nombre** del proyecto, y
+> SecretarIA lo creaba si no existía. Se retiró porque acabó decidiendo el tercero dónde
+> aterrizaba el trabajo del usuario: el proyecto que él elegía al conectar no recibía ni una
+> tarea. Con él se fueron el scope `connect:projects` y el error
+> `default_project_unavailable`.
 
 ## 4 · Lotes
 
@@ -177,7 +183,6 @@ cuando quieras — se creará una tarea nueva. La lápida es sólo del usuario (
 | `connection_incomplete`       | 409    | Hay token pero el usuario no terminó de conectar. Mándale a reconectar           |
 | `insufficient_scope`          | 403    | Te falta `connect:sync`                                                          |
 | `link_removed_by_user`        | 409    | **El usuario desenlazó esta tarea a propósito** (§6.1)                           |
-| `default_project_unavailable` | 409    | **El usuario archivó su proyecto destino** (§3)                                  |
 | `invalid_field`               | 422    | Un campo con forma incorrecta; el mensaje dice cuál                              |
 | `unknown_field`               | 422    | Mandaste un campo que no existe                                                  |
 | `missing_field`               | 422    | Falta uno obligatorio                                                            |
@@ -204,19 +209,15 @@ Y los del endpoint de token (`invalid_grant`, `invalid_request`…) no pasan por
 El sobre de error es siempre `{ "error": { "code": …, "message": … } }`, y el de éxito
 `{ "data": … }`.
 
-### 6.1 · Los dos 409 no son errores tuyos
+### 6.1 · El 409 que no es un error tuyo
 
-`link_removed_by_user` y `default_project_unavailable` son **decisiones del usuario que el
-contrato te está comunicando**. Tienen código propio precisamente para no depender de que
-alguien lea esta página.
+`link_removed_by_user` es una **decisión del usuario que el contrato te está comunicando**.
+Tiene código propio precisamente para no depender de que alguien lea esta página.
 
 - **`link_removed_by_user`**: el usuario desenlazó esa tarea. Hay lápida: no se crea nada, no
   se reintenta nunca, y sólo él puede levantarla desde su tarea. Marca el ítem por tu lado y
   deja de empujarlo.
-- **`default_project_unavailable`**: archivó su proyecto destino. Manda `project`, o espera a
-  que elija otro. No es un fallo de tu petición.
-
-Reintentar cualquiera de los dos es gastar cuota para que te vuelvan a decir lo mismo.
+Reintentarlo es gastar cuota para que te vuelvan a decir lo mismo.
 
 ## 7 · Cuotas
 

@@ -56,15 +56,22 @@ export interface ConnectItem {
   deadlineType?: 'exact' | 'date';
 
   /**
-   * NOMBRE del proyecto destino, no id. Se crea si no existe, y se resuelve
-   * solo entre los proyectos PROPIOS del usuario.
-   * Al CREAR, si lo omites cae en el proyecto que el usuario eligio al
-   * conectar. Al REFRESCAR, omitirlo significa "no opino": la tarea NO se
-   * mueve al destino por defecto.
-   * Exige el scope `connect:projects`; sin él, el campo se ignora y el ítem
-   * cae en el destino por defecto (sale en `skippedFields`).
+   * A qué ENTIDAD tuya pertenece este ítem: la organización, el buzón, la sede,
+   * lo que tu producto reparta. Es un id OPACO tuyo (`org_7f3a`), nunca un
+   * nombre visible, y solo admite `[A-Za-z0-9._:-]` (máx. 100).
+   *
+   * SecretarIA NO crea proyectos y no interpreta este valor: lo busca entre las
+   * vinculaciones que el USUARIO aprobó. Si esa entidad está vinculada, la
+   * tarea nace en su proyecto; si no lo está —o si omites el campo—, la tarea
+   * nace SIN proyecto y SecretarIA le pregunta al usuario a dónde va.
+   *
+   * Cuando no está vinculada lo sabrás porque `project` sale en
+   * `skippedFields`: esa es tu señal para llamar a `createLinkSession()` y
+   * mandar al usuario a vincularla.
+   *
+   * Al REFRESCAR, omitirlo significa "no opino": la tarea no se mueve.
    */
-  project?: string;
+  target?: string;
 
   /**
    * Opaco: SecretarIA lo guarda y lo pinta, jamás lo interpreta. Aquí es donde
@@ -124,10 +131,42 @@ export interface ConnectionInfo {
   /** Intersección token ∩ conexión: lo que REALMENTE puedes hacer ahora mismo. */
   scopes: string[];
   /**
-   * Dónde caen los ítems sin `project`. `null` = el usuario archivó ese
-   * proyecto; tus ítems sin `project` van a dar 409.
+   * Tus entidades que SecretarIA conoce (las que has nombrado en algún `sync`)
+   * y si el usuario las ha vinculado ya con un proyecto.
+   *
+   * No trae el id ni el nombre del proyecto, y no es un olvido: saber si algo
+   * tiene destino te sirve para pedir la vinculación; saber CUÁL es no te sirve
+   * para nada y es información del usuario.
    */
-  defaultProject: { id: string; name: string } | null;
+  targets: Array<{ target: string; linked: boolean }>;
+}
+
+/** Lo que pides para mandar al usuario a vincular una de tus entidades. */
+export interface LinkSessionOptions {
+  /** El mismo id opaco que mandas en `ConnectItem.target`. */
+  target: string;
+  /**
+   * Nombre legible de esa entidad, para que el usuario sepa qué está
+   * vinculando («Acme S.L.»). Opcional; SecretarIA lo sanea y lo recorta a 80.
+   * Sin él, la pantalla enseña el `target` crudo.
+   */
+  label?: string;
+  /**
+   * A dónde vuelve el usuario al terminar. Tiene que compartir ORIGEN con
+   * alguno de tus `redirect_uris` registrados —la ruta y la query son tuyas, y
+   * ahí es donde te llevas tu propio estado—. Si no, `invalid_return_url`.
+   */
+  returnUrl: string;
+}
+
+/**
+ * El billete. Es de UN SOLO USO y caduca en 15 minutos: hay que **redirigir al
+ * usuario** a `url` (no descargarla desde tu servidor, que la gastaría).
+ */
+export interface LinkSession {
+  url: string;
+  /** ms epoch. */
+  expiresAt: number;
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -147,10 +186,10 @@ export type ConnectErrorCode =
    */
   | 'connection_incomplete'
   /**
-   * 409 — el ítem no trae `project` y el proyecto destino ya no está. Los
-   * ítems que SÍ traen `project` del mismo lote entran igual.
+   * 422 — el `returnUrl` de `createLinkSession()` no comparte origen con
+   * ninguno de tus `redirect_uris` registrados (o usa un esquema prohibido).
    */
-  | 'default_project_unavailable'
+  | 'invalid_return_url'
   /** 403 — típicamente por no haber pedido `connect:sync`. */
   | 'insufficient_scope'
   /**

@@ -193,3 +193,76 @@ describe('createConnectClient', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe('createLinkSession', () => {
+  test('manda target, label y returnUrl, y devuelve el billete', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
+      jsonResponse(200, {
+        data: { url: 'https://app.secretar-ia.org/oauth/vincular?ls=lt_abc', expiresAt: 123 },
+      }),
+    );
+    const { client } = cliente(fetchMock);
+
+    const sesion = await client.createLinkSession({
+      target: 'org_7f3a',
+      label: 'Acme S.L.',
+      returnUrl: 'https://app.nodus.example/vuelta?org=7f3a',
+    });
+
+    expect(sesion.url).toContain('/oauth/vincular?ls=');
+    expect(sesion.expiresAt).toBe(123);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://ejemplo.invalid/api/connect/link-session');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body as string)).toEqual({
+      target: 'org_7f3a',
+      label: 'Acme S.L.',
+      returnUrl: 'https://app.nodus.example/vuelta?org=7f3a',
+    });
+  });
+
+  test('un returnUrl de otro origen llega como ConnectError tipado', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
+      jsonResponse(422, {
+        error: {
+          code: 'invalid_return_url',
+          message: 'Field returnUrl must match the origin of a registered redirect URI',
+        },
+      }),
+    );
+    const { client } = cliente(fetchMock);
+
+    await expect(
+      client.createLinkSession({ target: 'org_7f3a', returnUrl: 'https://otro.example/robo' }),
+    ).rejects.toMatchObject({ code: 'invalid_return_url', status: 422 });
+  });
+});
+
+describe('el contrato de destino', () => {
+  test('el ítem viaja con `target` opaco y sin nombre de proyecto', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
+      jsonResponse(200, {
+        data: {
+          taskId: 't1',
+          externalId: 'TCK-42',
+          created: true,
+          projectId: null,
+          appliedFields: ['title'],
+          skippedFields: ['project'],
+          adoptedFields: [],
+        },
+      }),
+    );
+    const { client } = cliente(fetchMock);
+
+    const resultado = await client.sync({ ...ITEM, target: 'org_7f3a' });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string).target).toBe('org_7f3a');
+    // La señal de «esta entidad no está vinculada»: el integrador la lee en
+    // `project`, que es el campo de la TAREA que se ha visto afectado.
+    expect(resultado.skippedFields).toContain('project');
+    expect(resultado.projectId).toBeNull();
+  });
+});

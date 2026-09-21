@@ -10,8 +10,6 @@ import type { ConnectionInfo, StoredTokens } from './types.js';
 export const SCOPES = {
   /** Empujar ítems y desenlazar. El que todo el mundo pide. */
   SYNC: 'connect:sync',
-  /** Nombrar proyecto en el ítem (y crearlo si no existe). Opcional. */
-  PROJECTS: 'connect:projects',
   /**
    * SIN ESTE NO HAY REFRESH TOKEN y la integración muere a la hora. Es el que
    * se omite por no reconocerlo.

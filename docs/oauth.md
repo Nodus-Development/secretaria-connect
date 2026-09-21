@@ -32,7 +32,7 @@ res.redirect(url);
 `buildAuthorizeUrl` es **asíncrona**: el reto `S256` sale de `crypto.subtle.digest`.
 
 `SCOPES` son los tres literales del [alta](./alta.md#5--scopes): `SCOPES.SYNC`
-(`connect:sync`), `SCOPES.PROJECTS` (`connect:projects`) y `SCOPES.OFFLINE`
+(`connect:sync`) y `SCOPES.OFFLINE`
 (`offline_access`).
 
 > **`offline_access` no es ceremonia.** Es el scope que hace que el proveedor emita refresh
@@ -174,7 +174,6 @@ El consentimiento es **web**. El usuario ve tu tarjeta —nombre, logo, dominio�
 que pides, y dos decisiones suyas:
 
 - **El proyecto destino**: dónde aterrizan los ítems que no nombren proyecto.
-- **`connect:projects`**, si lo pediste: puede desmarcarlo y conectar igual.
 
 Por eso la autoridad efectiva de un token es la **intersección** de lo que el token lleva y lo
 que la conexión concede, recalculada en cada petición. Si el usuario estrecha el
@@ -183,7 +182,7 @@ tenga que caducar. Consulta lo que tienes de verdad con `me()`:
 
 ```ts
 const info = await secretaria.me();
-// { connectionId, scopes, defaultProject: { id, name } | null }
+// { connectionId, scopes, targets: [{ target, linked }] }
 ```
 
 `me()` **no devuelve ni un dato del usuario**: ni nombre, ni correo, ni nada suyo. Devuelve lo

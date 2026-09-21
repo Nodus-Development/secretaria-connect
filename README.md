@@ -21,6 +21,7 @@ cuándo las cierra o las reabre.
 | [`docs/alta.md`](./docs/alta.md)         | Cómo damos de alta tu app, qué nos das y qué te llevas               |
 | [`docs/oauth.md`](./docs/oauth.md)       | Conectar a un usuario: PKCE, scopes, refresco rotatorio              |
 | [`docs/sync.md`](./docs/sync.md)         | El contrato de sembrado: campos, adopción, errores, cuotas           |
+| [`docs/vincular.md`](./docs/vincular.md) | **Dónde aterrizan las tareas.** Lo decide el usuario, no tú          |
 | [`docs/webhooks.md`](./docs/webhooks.md) | Los cuatro eventos, la firma, las garantías, la deduplicación        |
 | [`docs/proyectar.md`](./docs/proyectar.md) | **El deber de proyectar.** Léelo antes de escribir tu mapeo        |
 | [`docs/operacion.md`](./docs/operacion.md) | Qué pasa si algo falla, a quién avisamos, cómo cambia el contrato   |
@@ -111,9 +112,7 @@ const { url, verifier } = await buildAuthorizeUrl({
   clientId,
   redirectUri,
   // Sin `offline_access` no hay refresh token y la integración muere a la hora.
-  // Sin `connect:projects` no puedes nombrar el proyecto destino: tus ítems
-  // caen en el que el usuario eligió y te lo dicen en `skippedFields`.
-  scopes: [SCOPES.SYNC, SCOPES.PROJECTS, SCOPES.OFFLINE],
+  scopes: [SCOPES.SYNC, SCOPES.OFFLINE],
   // Aleatorio y de un solo uso. NO el id de tu usuario: no es secreto.
   state: nonce,
 });
@@ -124,6 +123,26 @@ const tokens = await exchangeCode({ clientId, clientSecret, code, verifier, redi
 ```
 
 → [`docs/oauth.md`](./docs/oauth.md)
+
+## Dónde aterrizan las tareas
+
+No lo decides tú. Tu ítem dice a qué **entidad tuya** pertenece y el usuario elige a qué proyecto
+suyo va esa entidad, desde una pantalla nuestra:
+
+```ts
+await client.sync({ externalId: 'TCK-42', title: '…', done: false, target: 'org_7f3a' });
+
+// Y un botón en tu interfaz para que el usuario le ponga destino:
+const { url } = await client.createLinkSession({
+  target: 'org_7f3a',
+  label: 'Acme S.L.',
+  returnUrl: 'https://tu-servidor.example/vuelta?org=7f3a',
+});
+// Redirige el navegador del usuario a `url`. Un solo uso, 15 minutos.
+```
+
+Mientras no la vincule, esas tareas nacen **sin proyecto** y SecretarIA se lo pregunta a él. Lo
+sabes porque `project` sale en `skippedFields`. → [`docs/vincular.md`](./docs/vincular.md)
 
 ## Lo que este SDK **no** hace
 

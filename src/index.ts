@@ -10,6 +10,8 @@ export type {
   ConnectErrorCode,
   ConnectItem,
   ConnectionInfo,
+  LinkSession,
+  LinkSessionOptions,
   StoredTokens,
   SyncItemError,
   SyncResult,

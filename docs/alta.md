@@ -85,11 +85,11 @@ la URL de autorización algo que no esté en esa lista se rechaza con `invalid_s
 | ------------------ | ----------- | --------------------------------------------------------------------- |
 | `connect:sync`     | sí          | Toda la superficie de escritura: `sync`, `sync-batch`, `unlink`       |
 | `offline_access`   | sí          | Que el proveedor emita refresh token. Sin esto morirías a la hora     |
-| `connect:projects` | no          | Nombrar el proyecto destino de cada ítem. El usuario puede desmarcarlo |
 
-`connect:projects` es una casilla que el usuario puede quitar al conectar, y quitarla **no
-rompe nada**: tus ítems caen en el proyecto que él eligió como destino y te lo decimos en
-`skippedFields`. Ver [`sync.md`](./sync.md).
+Los `redirect_uris` que registres gobiernan **dos** cosas: a dónde vuelve el `authorize` y qué
+`returnUrl` acepta `createLinkSession()` — se compara el **origen**, no la URL entera. Si vas a
+mandar al usuario a vincular entidades, registra el origen desde el que quieras recibirlo de
+vuelta (ver [`vincular.md`](./vincular.md)).
 
 No existe ningún scope de lectura, y no es un olvido: ver [`sync.md` §8](./sync.md#8--lo-que-no-existe-dicho-a-propósito).
 
