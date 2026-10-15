@@ -17,7 +17,7 @@ import { buildAuthorizeUrl, SCOPES } from '@nodus-development/secretaria-connect
 const { url, verifier } = await buildAuthorizeUrl({
   clientId: process.env.SECRETARIA_CLIENT_ID!,
   redirectUri: 'https://tu-sistema.example/integraciones/secretaria/callback',
-  scopes: [SCOPES.SYNC, SCOPES.PROJECTS, SCOPES.OFFLINE],
+  scopes: [SCOPES.SYNC, SCOPES.OFFLINE],
   // Aleatorio, de un solo uso y guardado por tu lado: NO el id de tu usuario,
   // que no es secreto y cualquiera puede escribir.
   state: nonce,
@@ -31,9 +31,8 @@ res.redirect(url);
 
 `buildAuthorizeUrl` es **asíncrona**: el reto `S256` sale de `crypto.subtle.digest`.
 
-`SCOPES` son los tres literales del [alta](./alta.md#5--scopes): `SCOPES.SYNC`
-(`connect:sync`) y `SCOPES.OFFLINE`
-(`offline_access`).
+`SCOPES` son los dos literales del [alta](./alta.md#5--scopes): `SCOPES.SYNC`
+(`connect:sync`) y `SCOPES.OFFLINE` (`offline_access`).
 
 > **`offline_access` no es ceremonia.** Es el scope que hace que el proveedor emita refresh
 > token. Sin él recibes un access token de una hora y nada más, y la integración se muere sola

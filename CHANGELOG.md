@@ -45,7 +45,9 @@ proyecto desde fuera**.
    SecretarIA le pregunta al usuario a dónde van. Lo sabrás porque `project`
    sale en `skippedFields`.
 
-## 0.1.1
+## 0.1.1 (no publicada)
+
+No llegó a publicarse: su contenido salió en `0.2.0`.
 
 Solo documentación: el código publicado es idéntico al de `0.1.0`.
 
